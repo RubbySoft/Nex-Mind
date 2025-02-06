@@ -126,8 +126,7 @@ const FloatingImage = () => {
     </div>
   );
 };
-
-const Chat = () => {
+const BestFriend = () => {
   return (
     <div className="bg-black text-white h-screen">
       <FloatingImage /> {/* Floating image with animation */}
@@ -135,4 +134,4 @@ const Chat = () => {
   );
 };
 
-export default Chat;
+export default BestFriend;

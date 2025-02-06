@@ -165,7 +165,6 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/auth" element={<Auth />} />
-        <Route path="/home" element={<Chat />} />
         <Route path="/girlfriend-ai" element={<ChatUI />} />
         <Route path="/friend-ai" element={<ChatUI />} />
         <Route path="/doppelganger-ai" element={<ChatUI />} />

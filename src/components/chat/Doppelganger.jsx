@@ -125,7 +125,8 @@ const FloatingImage = () => {
   );
 };
 
-const Chat = () => {
+
+const Doppelganger = () => {
   return (
     <div className="bg-black text-white h-screen">
       <FloatingImage /> {/* Floating image with animation */}
@@ -133,4 +134,4 @@ const Chat = () => {
   );
 };
 
-export default Chat;
+export default Doppelganger;
