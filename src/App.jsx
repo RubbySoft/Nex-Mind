@@ -12,6 +12,8 @@ import { signInWithPopup } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import HomeUi from "./components/home/Home";
 import ChatUI from "./components/home/ChatUI";
+import BF from "./components/ai/BF";
+import DG from "./components/ai/DG";
 ChatUI
 
 function Home() {
@@ -166,8 +168,8 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/girlfriend-ai" element={<ChatUI />} />
-        <Route path="/friend-ai" element={<ChatUI />} />
-        <Route path="/doppelganger-ai" element={<ChatUI />} />
+        <Route path="/friend-ai" element={<BF />} />
+        <Route path="/doppelganger-ai" element={<DG />} />
       </Routes>
     </Router>
   );
