@@ -1,13 +1,17 @@
 import React, { useState, useEffect, useRef } from "react";
+import { ref, push, onChildAdded } from "firebase/database";
+import { database } from "../../firebaseConfig"; // adjust the path as needed
 
 const BF = () => {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
-  const [isTyping, setIsTyping] = useState(false); // Track typing animation
-  const API_URL = "http://localhost:5000/api/chat"; // Flask API URL
-  const chatContainerRef = useRef(null); // Ref for the chat container
+  const [isTyping, setIsTyping] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const chatContainerRef = useRef(null);
+  const API_URL = "http://127.0.0.1:5000/api/chat";
 
-  // Random responses for when the API is offline
+  const messagesRef = ref(database, "friendChat");
+
   const randomResponses = [
     "Hey man, caught up with some stuff right now. I'll hit you up when I’m free! 👊",
     "Dude, I’m swamped at the moment. Let’s catch up soon—don’t go too far! 😂",
@@ -26,18 +30,30 @@ const BF = () => {
     "I know you’re free and I’m not, but I’ll join the fun as soon as I can. Save me a spot! 🕺",
   ];
 
-  // Function to handle sending a message
+  useEffect(() => {
+    const unsubscribe = onChildAdded(messagesRef, (snapshot) => {
+      const data = snapshot.val();
+      setMessages((prev) => [...prev, data]);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   const handleSendMessage = async () => {
-    if (inputValue.trim() === "") return;
+    if (inputValue.trim() === "" || isSending) return;
 
-    const newMessage = { id: messages.length + 1, text: inputValue, sender: "user" };
-    setMessages((prev) => [...prev, newMessage]);
-    setInputValue("");
-
-    // Simulate typing animation
-    setIsTyping(true);
+    setIsSending(true);
+    const userMsg = {
+      id: Date.now(),
+      text: inputValue,
+      sender: "user",
+    };
 
     try {
+      await push(messagesRef, userMsg);
+      setInputValue("");
+      setIsTyping(true);
+
       const response = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -45,80 +61,80 @@ const BF = () => {
       });
 
       const data = await response.json();
-      if (data.response) {
-        // Simulate typing delay
-        setTimeout(() => {
-          setIsTyping(false);
-          setMessages((prev) => [
-            ...prev,
-            { id: prev.length + 1, text: data.response, sender: "ai" },
-          ]);
-        }, 1500); // 1.5 seconds delay
-      }
-    } catch (error) {
-      console.error("Error fetching AI response:", error);
-      // If API fails, send a random response
+      const aiMsg = {
+        id: Date.now() + 1,
+        text: data.response,
+        sender: "ai",
+      };
+
       setTimeout(() => {
         setIsTyping(false);
-        const randomResponse = randomResponses[Math.floor(Math.random() * randomResponses.length)];
-        setMessages((prev) => [
-          ...prev,
-          { id: prev.length + 1, text: randomResponse, sender: "ai" },
-        ]);
-      }, 1500); // 1.5 seconds delay
+        push(messagesRef, aiMsg);
+        setIsSending(false);
+      }, 1500);
+    } catch (error) {
+      console.error("API error:", error);
+      const fallbackMsg = {
+        id: Date.now() + 1,
+        text: randomResponses[Math.floor(Math.random() * randomResponses.length)],
+        sender: "ai",
+      };
+
+      setTimeout(() => {
+        setIsTyping(false);
+        push(messagesRef, fallbackMsg);
+        setIsSending(false);
+      }, 1500);
     }
   };
 
-  // Handle Enter key press
-  const handleKeyPress = (e) => {
+  const handleKeyDown = (e) => {
     if (e.key === "Enter") {
+      e.preventDefault();
       handleSendMessage();
     }
   };
 
-  // Scroll to the bottom of the chat container when messages change
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, isTyping]);
 
   return (
     <div className="relative h-screen w-full text-white flex flex-col">
-      {/* Background Shape (Trapezoidal) */}
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage: `url(/img/entrance.jpg)`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          zIndex: -1,
-        }}
-      />
-
-      {/* Navbar with BestFriend's Name */}
-      <div className="fixed top-0 left-0 right-0 bg-black bg-opacity-70 py-4 text-center z-10">
-        <h1 className="text-2xl font-bold text-white">BestFriend</h1>
+      {/* Chat UI Background */}
+      <div className="absolute inset-0">
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `url(/img/entrance.jpg)`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            opacity: 0.8,
+            zIndex: -2,
+          }}
+        />
+        <div className="absolute inset-0 bg-black bg-opacity-50 z-[-1]" />
       </div>
 
-      {/* Chat Messages (Flowing Downward) */}
+      {/* Navbar */}
+      <div className="fixed top-0 left-0 right-0 py-4 text-center z-10">
+        <h1 className="text-white text-md font-bold special-font">Best Friend</h1>
+      </div>
+
+      {/* Chat Messages */}
       <div
         ref={chatContainerRef}
-        className="flex flex-col flex-grow overflow-y-auto pt-20 pb-24 px-4 relative z-10"
+        className="flex flex-col flex-grow overflow-y-auto pt-20 pb-24 px-4 relative z-10 font-general text-sm"
         style={{
           maskImage: "linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%)",
           WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%)",
         }}
       >
         {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"} mb-2`}
-          >
-            {msg.sender === "ai" && (
-              <span className="text-white font-bold mr-2">AI</span>
-            )}
-
+          <div key={msg.id} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"} mb-2`}>
+            {msg.sender === "ai" && <span className="text-white mr-2">BF</span>}
             <div
               className={`rounded-xl p-3 max-w-[70%] ${
                 msg.sender === "user"
@@ -128,17 +144,13 @@ const BF = () => {
             >
               {msg.text}
             </div>
-
-            {msg.sender === "user" && (
-              <span className="text-white font-bold ml-2">You</span>
-            )}
+            {msg.sender === "user" && <span className="text-white ml-2">You</span>}
           </div>
         ))}
 
-        {/* Typing Animation */}
         {isTyping && (
           <div className="flex justify-start mb-2">
-            <span className="text-white font-bold mr-2">AI</span>
+            <span className="text-white font-bold mr-2">BF</span>
             <div className="bg-black bg-opacity-50 text-white rounded-xl p-3 max-w-[70%]">
               <div className="flex space-x-1">
                 <div className="w-2 h-2 bg-white rounded-full animate-bounce"></div>
@@ -150,23 +162,28 @@ const BF = () => {
         )}
       </div>
 
-      {/* Input Box and Send Button */}
-      <div className="fixed bottom-0 left-0 right-0 bg-black bg-opacity-20 p-4 z-30">
-        <div className="flex items-center rounded-lg bg-black bg-opacity-30 p-2">
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Type a message..."
-            className="flex-1 bg-transparent text-white outline-none p-2"
-          />
-          <button
-            onClick={handleSendMessage}
-            className="bg-white bg-opacity-20 text-white rounded-lg px-4 py-2 hover:bg-opacity-30 transition"
-          >
-            Send
-          </button>
+      {/* Input */}
+      <div className="fixed bottom-0 left-0 right-0 bg-black bg-opacity-0 p-4 z-30">
+        <div className="flex justify-center">
+          <div className="flex items-center w-[80%] md:w-[50%] lg:w-[40%] xl:w-[30%] rounded-full bg-black bg-opacity-50 p-2">
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Type a message..."
+              className="flex-1 bg-transparent text-white outline-none p-2 w-full rounded-full"
+            />
+            <button
+              onClick={handleSendMessage}
+              disabled={isSending}
+              className={`bg-white bg-opacity-20 text-white rounded-full px-4 py-2 hover:bg-opacity-30 transition ${
+                isSending ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+            >
+              Send
+            </button>
+          </div>
         </div>
       </div>
     </div>
